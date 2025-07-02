@@ -1,11 +1,24 @@
 ---
-import Welcome from '../components/Welcome.astro';
-import Layout from '../layouts/Layout.astro';
+import SidebarTabsInterface from "../components/SidebarTabsInterface.astro";
+import Layout from "../layouts/Layout.astro";
 
-// Welcome to Astro! Wondering what to do next? Check out the Astro documentation at https://docs.astro.build
-// Don't want to use any of this? Delete everything in this file, the `assets`, `components`, and `layouts` directories, and start fresh.
+const customSidebarItems = [
+  { id: "astro", label: "Astro 官网", url: "https://astro.build", icon: "🚀" },
+  {
+    id: "docs",
+    label: "文档中心",
+    url: "https://docs.astro.build",
+    icon: "📖",
+  },
+  {
+    id: "github",
+    label: "GitHub",
+    url: "https://github.com/withastro/astro",
+    icon: "💻",
+  },
+];
 ---
 
 <Layout>
-	<Welcome />
+  <SidebarTabsInterface sidebarItems={customSidebarItems} />
 </Layout>

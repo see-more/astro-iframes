@@ -1,0 +1,396 @@
+---
+export interface SidebarItem {
+  id: string;
+  label: string;
+  url: string;
+  icon?: string;
+}
+
+export interface Props {
+  sidebarItems?: SidebarItem[];
+}
+
+const { sidebarItems } = Astro.props;
+---
+
+<div class="container">
+  <div class="sidebar">
+    <div class="sidebar-header">
+      <h3>Sdibar</h3>
+    </div>
+    <div class="sidebar-content">
+      {
+        sidebarItems?.map((item) => (
+          <button
+            class="sidebar-item"
+            data-id={item.id}
+            data-label={item.label}
+            data-url={item.url}
+          >
+            <span class="sidebar-icon">{item.icon}</span>
+            <span class="sidebar-label">{item.label}</span>
+          </button>
+        ))
+      }
+    </div>
+  </div>
+
+  <div class="main-content">
+    <div class="tabs-container">
+      <div class="tabs-header" id="tabs-header"></div>
+    </div>
+
+    <div class="iframe-container">
+      <div class="empty-state" id="empty-state">
+        <div class="empty-content">
+          <span class="empty-icon">📄</span>
+          <h3>选择一个页面开始浏览</h3>
+          <p>点击左侧侧边栏中的任意项目来打开新标签页</p>
+        </div>
+      </div>
+      <iframe id="main-iframe" style="display: none;" title="内容展示"></iframe>
+    </div>
+  </div>
+</div>
+
+<script>
+  class TabManager {
+    tabs: Map<any, any>;
+    activeTabId: null | string;
+    constructor() {
+      this.tabs = new Map();
+      this.activeTabId = null;
+      this.init();
+    }
+
+    init() {
+      document.querySelectorAll(".sidebar-item").forEach((item) => {
+        item.addEventListener("click", (e) => {
+          const id = (e?.currentTarget as HTMLElement)?.getAttribute(
+            "data-id"
+          ) as string;
+          const label = (e?.currentTarget as HTMLElement)?.getAttribute(
+            "data-label"
+          ) as string;
+          const url = (e?.currentTarget as HTMLElement)?.getAttribute(
+            "data-url"
+          ) as string;
+          this.openTab(id, label, url);
+        });
+      });
+    }
+
+    openTab(id: string, label: string, url: string) {
+      if (this.tabs.has(id)) {
+        this.activateTab(id);
+        return;
+      }
+
+      this.tabs.set(id, { id, label, url });
+      this.renderTabs();
+      this.activateTab(id);
+    }
+
+    closeTab(id: string) {
+      if (!this.tabs.has(id)) return;
+
+      this.tabs.delete(id);
+
+      if (this.activeTabId === id) {
+        const remainingTabs = Array.from(this.tabs.keys());
+        if (remainingTabs.length > 0) {
+          this.activateTab(remainingTabs[remainingTabs.length - 1]);
+        } else {
+          this.activeTabId = null;
+          this.showEmptyState();
+        }
+      }
+
+      this.renderTabs();
+    }
+
+    activateTab(id: string) {
+      if (!this.tabs.has(id)) return;
+
+      this.activeTabId = id;
+      const tab = this.tabs.get(id);
+
+      const iframe = document.getElementById(
+        "main-iframe"
+      ) as HTMLIFrameElement;
+      const emptyState = document.getElementById("empty-state") as HTMLElement;
+
+      iframe.src = tab.url;
+      iframe.style.display = "block";
+      emptyState.style.display = "none";
+
+      this.updateTabStyles();
+    }
+
+    showEmptyState() {
+      const iframe = document.getElementById(
+        "main-iframe"
+      ) as HTMLIFrameElement;
+      const emptyState = document.getElementById("empty-state") as HTMLElement;
+
+      iframe.style.display = "none";
+      emptyState.style.display = "flex";
+    }
+
+    renderTabs() {
+      const tabsHeader = document.getElementById("tabs-header") as HTMLElement;
+      tabsHeader.innerHTML = "";
+
+      this.tabs.forEach((tab) => {
+        const tabElement = document.createElement("div");
+        tabElement.className = `tab ${this.activeTabId === tab.id ? "active" : ""}`;
+        tabElement.innerHTML = `
+          <span class="tab-label">${tab.label}</span>
+          <button class="tab-close" data-tab-id="${tab.id}">×</button>
+        `;
+
+        tabElement.addEventListener("click", (e: MouseEvent) => {
+          if (!(e.target as HTMLElement)?.classList.contains("tab-close")) {
+            this.activateTab(tab.id);
+          }
+        });
+
+        const closeBtn = tabElement.querySelector(
+          ".tab-close"
+        ) as HTMLButtonElement;
+        closeBtn.addEventListener("click", (e) => {
+          e.stopPropagation();
+          this.closeTab(tab.id);
+        });
+
+        tabsHeader.appendChild(tabElement);
+      });
+    }
+
+    updateTabStyles() {
+      document.querySelectorAll(".tab").forEach((tab) => {
+        tab.classList.remove("active");
+      });
+
+      const activeTab = document.querySelector(
+        `[data-tab-id="${this.activeTabId}"]`
+      )?.parentElement;
+      if (activeTab) {
+        activeTab.classList.add("active");
+      }
+    }
+  }
+  document.addEventListener("DOMContentLoaded", () => {
+    new TabManager();
+  });
+</script>
+
+<style>
+  .container {
+    display: flex;
+    height: 100vh;
+    background-color: #f5f5f5;
+  }
+
+  .sidebar {
+    width: 250px;
+    background-color: #2c3e50;
+    color: white;
+    display: flex;
+    flex-direction: column;
+    border-right: 2px solid #34495e;
+  }
+
+  .sidebar-header {
+    padding: 20px;
+    border-bottom: 1px solid #34495e;
+    background-color: #1a252f;
+  }
+
+  .sidebar-header h3 {
+    margin: 0;
+    font-size: 18px;
+    font-weight: 600;
+  }
+
+  .sidebar-content {
+    flex: 1;
+    padding: 10px 0;
+    overflow-y: auto;
+  }
+
+  .sidebar-item {
+    width: 100%;
+    padding: 12px 20px;
+    border: none;
+    background: none;
+    color: white;
+    text-align: left;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    transition: background-color 0.2s ease;
+  }
+
+  .sidebar-item:hover {
+    background-color: #34495e;
+  }
+
+  .sidebar-item:active {
+    background-color: #3498db;
+  }
+
+  .sidebar-icon {
+    font-size: 18px;
+    width: 24px;
+    text-align: center;
+  }
+
+  .sidebar-label {
+    font-size: 14px;
+    font-weight: 500;
+  }
+  .main-content {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    background-color: white;
+  }
+
+  .tabs-container {
+    border-bottom: 2px solid #e1e8ed;
+    background-color: #f8f9fa;
+    min-height: 48px;
+  }
+
+  .tabs-header {
+    display: flex;
+    align-items: center;
+    height: 48px;
+    overflow-x: auto;
+    scrollbar-width: thin;
+  }
+
+  .tabs-header::-webkit-scrollbar {
+    height: 4px;
+  }
+
+  .tabs-header::-webkit-scrollbar-track {
+    background: #f1f1f1;
+  }
+
+  .tabs-header::-webkit-scrollbar-thumb {
+    background: #c1c1c1;
+    border-radius: 2px;
+  }
+  /* 奇怪 这里为什么选不中 */
+  .tab {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 16px;
+    border: none;
+    background-color: #e9ecef;
+    border-top: 3px solid transparent;
+    cursor: pointer;
+    white-space: nowrap;
+    font-size: 14px;
+    color: #495057;
+    transition: all 0.2s ease;
+    min-width: 120px;
+    max-width: 200px;
+    height: 1000px;
+  }
+
+  .tab:hover {
+    background-color: #dee2e6;
+  }
+
+  .tab.active {
+    background-color: white;
+    border-top-color: #3498db;
+    color: #2c3e50;
+  }
+
+  .tab-label {
+    flex: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .tab-close {
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    border: none;
+    background-color: #6c757d;
+    color: white;
+    font-size: 12px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background-color 0.2s ease;
+  }
+
+  .tab-close:hover {
+    background-color: #dc3545;
+  }
+
+  .iframe-container {
+    flex: 1;
+    position: relative;
+    background-color: white;
+  }
+
+  #main-iframe {
+    width: 100%;
+    height: 100%;
+    border: none;
+  }
+
+  .empty-state {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+    background-color: #f8f9fa;
+  }
+
+  .empty-content {
+    text-align: center;
+    color: #6c757d;
+  }
+
+  .empty-icon {
+    font-size: 48px;
+    display: block;
+    margin-bottom: 16px;
+  }
+
+  .empty-content h3 {
+    margin: 0 0 8px 0;
+    font-size: 20px;
+    color: #495057;
+  }
+
+  .empty-content p {
+    margin: 0;
+    font-size: 14px;
+  }
+  @media (max-width: 768px) {
+    .sidebar {
+      width: 200px;
+    }
+
+    .sidebar-item {
+      padding: 10px 15px;
+    }
+
+    .tab {
+      min-width: 100px;
+      max-width: 150px;
+    }
+  }
+</style>
